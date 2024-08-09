@@ -360,6 +360,35 @@ function showPredictionChartModal(userInfo, rowData) {
     });
 }
 
+function uploadFile(event) {
+    event.preventDefault(); // Mencegah form submit secara default
+
+    let formData = new FormData();
+    let fileInput = document.getElementById('fileInput');
+    let clearData = document.getElementById('clearData').checked;
+
+    formData.append('file', fileInput.files[0]);
+    formData.append('clear_data', clearData);
+
+    fetch('/uploader', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(data => {
+        alert('File uploaded successfully!');
+        console.log(data);
+        $('#uploadModal').modal('hide'); // Tutup modal setelah sukses upload
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('File upload failed!');
+    });
+}
+
+// Event listener untuk form submit
+document.getElementById('uploadForm').addEventListener('submit', uploadFile);
+
 fetchDataAndUpdateTable()
 
 fetchPredictionDataAndUpdateTable()

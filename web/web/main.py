@@ -1,9 +1,14 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request, url_for
 import pandas as pd
 import numpy as np
 import mysql.connector
+import os
+
 
 app = Flask(__name__)
+
+app.config['UPLOAD_FOLDER'] = 'uploads/'
+
 
 class VARMA:
     def __init__(self, p, q):
@@ -143,6 +148,66 @@ def predict():
     combined_json = combined_df.to_dict(orient='records')
 
     return jsonify({"status": "success", "data": combined_json})
+
+@app.route('/uploader', methods=['POST'])
+def uploader_file():
+    clear_data = request.form.get('clear_data') == 'true'
+
+    if 'file' not in request.files:
+        return 'No file part', 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return 'No selected file', 400
+    
+    if file:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(filepath)
+        
+        # Read the Excel file
+        df = pd.read_excel(filepath)
+        
+        # Prepare the data to match the database schema
+        records = []
+        for _, row in df.iterrows():
+            nama_pemakai = row['Nama Pemakai']
+            kategori = row['Kategori']
+            lokasi = row['Lokasi']
+            daya_tersambung = row['Daya Tersambung (VA)']
+            
+            for minggu in range(1, 53):
+                usage_data = row[f'Minggu_{minggu}']
+                records.append((nama_pemakai, kategori, lokasi, daya_tersambung, minggu, usage_data))
+        
+        try:
+            connection = mysql.connector.connect(
+                host='localhost',
+                user='root',
+                password='',  # Replace with your MySQL password
+                database='data_listrik'
+            )
+            cursor = connection.cursor()
+            
+            # If clear_data is True, truncate the table
+            if clear_data:
+                cursor.execute("TRUNCATE TABLE predictions")
+            
+            insert_query = """
+            INSERT INTO predictions (nama_pemakai, kategori, lokasi, daya_tersambung, minggu, usage_data)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            
+            cursor.executemany(insert_query, records)
+            connection.commit()
+            
+            cursor.close()
+            connection.close()
+        
+        except mysql.connector.Error as err:
+            return f"Error: {err}", 500
+        
+        return 'File successfully uploaded and data inserted into the database', 200
 
 @app.route('/get_data', methods=['GET'])
 def get_data():
