@@ -208,7 +208,64 @@ def uploader_file():
             return f"Error: {err}", 500
         
         return 'File successfully uploaded and data inserted into the database', 200
+    
+@app.route('/get_usage_data', methods=['GET'])
+def get_usage_data():
+    try:
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',  # Sesuaikan dengan username MySQL Anda
+            password='',  # Sesuaikan dengan password MySQL Anda
+            database='data_listrik'  # Sesuaikan dengan nama database Anda
+        )
+        cursor = connection.cursor(dictionary=True)
+        
+        # Query untuk mengambil data dari tabel usage_data
+        query = "SELECT * FROM usage_data"
+        cursor.execute(query)
+        
+        # Mengambil semua data dari hasil query
+        data = cursor.fetchall()
+        
+        cursor.close()
+        connection.close()
+        
+        # Mengembalikan data dalam format JSON
+        return jsonify({"status": "success", "data": data})
+    
+    except mysql.connector.Error as err:
+        return jsonify({"status": "error", "message": f"Error: {err}"}), 500
 
+@app.route('/get_predictions_data', methods=['GET'])
+def get_predictions_data():
+    try:
+        # Membuat koneksi ke database MySQL
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',  # Sesuaikan dengan username MySQL Anda
+            password='',  # Sesuaikan dengan password MySQL Anda
+            database='data_listrik'  # Sesuaikan dengan nama database Anda
+        )
+        cursor = connection.cursor(dictionary=True)
+
+        # Query untuk mengambil data dari tabel predictions
+        query = "SELECT Wilayah, Kategori, week_pred, prediction_result FROM predictions_data"
+        cursor.execute(query)
+
+        # Mengambil semua data dari hasil query
+        data = cursor.fetchall()
+
+        # Tutup koneksi
+        cursor.close()
+        connection.close()
+
+        # Mengembalikan data dalam format JSON
+        return jsonify({"status": "success", "data": data})
+
+    except mysql.connector.Error as err:
+        # Jika ada error, kembalikan pesan error dalam JSON
+        return jsonify({"status": "error", "message": f"Error: {err}"}), 500
+    
 @app.route('/get_data', methods=['GET'])
 def get_data():
     data = get_data_from_db()
@@ -217,7 +274,7 @@ def get_data():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index_1.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
